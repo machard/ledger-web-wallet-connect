@@ -1,4 +1,4 @@
 # ledger-web-wallet-btc
 
-App that manages ledger btc accounts
+App that enable wallet connect for your ledger
 Should be running inside https://github.com/machard/ledger-web
