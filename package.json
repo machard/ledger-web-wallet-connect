@@ -15,6 +15,8 @@
     "@types/node": "^15.12.4",
     "@types/react": "^17.0.11",
     "@types/react-dom": "^17.0.8",
+    "@walletconnect/client": "^1.4.1",
+    "ethers": "^5.4.1",
     "ledger-web-client": "1.0.0",
     "ledger-web-hw-transport": "1.0.0",
     "lodash": "^4.17.21",
@@ -22,7 +24,6 @@
     "react-dom": "^17.0.2",
     "react-scripts": "4.0.3",
     "typescript": "^4.3.4",
-    "walletconnect": "^1.4.1",
     "web-vitals": "^1.0.1"
   },
   "scripts": {
