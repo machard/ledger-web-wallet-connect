@@ -16,6 +16,7 @@
     "@types/react": "^17.0.11",
     "@types/react-dom": "^17.0.8",
     "@walletconnect/client": "^1.4.1",
+    "axios": "^0.21.1",
     "ethers": "^5.4.1",
     "ledger-web-client": "1.0.0",
     "ledger-web-hw-transport": "1.0.0",

@@ -1,10 +1,13 @@
 import React, { useEffect, useReducer, useState } from 'react';
 import Paper from '@material-ui/core/Paper';
+import axios from "axios";
 import eth from './eth';
 import client from "./client";
 import { createStyles, Theme, withStyles, WithStyles } from '@material-ui/core/styles';
 import { Box, Button, FormControl, InputLabel, MenuItem, Select, TextField, Typography } from '@material-ui/core';
 import WCClient from "@walletconnect/client";
+import * as ethers from "ethers";
+import { find } from 'lodash';
 
 const clientMeta = {
   description: "Ledger Web",
@@ -45,6 +48,7 @@ function WalletConnect(props: WalletConnectProps) {
     publicKey: string;
     address: string;
     chainCode?: string | undefined;
+    path: string,
   }[]>([]);
 
   const onChange = (event: { target: { id: string; value: string; }; }) =>
@@ -71,7 +75,10 @@ function WalletConnect(props: WalletConnectProps) {
     try {
       let i = 0;
       while (addresses.length < 10) {
-        addresses.push(await eth.getAddress(`44'/60'/${i}'/0/0`));
+        addresses.push({
+          ...(await eth.getAddress(`44'/60'/${i}'/0/0`)),
+          path: `44'/60'/${i}'/0/0`
+        });
         i += 1;
       }
     } catch (e) {
@@ -130,12 +137,131 @@ function WalletConnect(props: WalletConnectProps) {
       disconnect();
     });
 
-    connector.on("call_request", (error, payload) => {
+    connector.on("call_request", async (error, payload) => {
       console.log(payload);
-      connector?.rejectRequest({
-        id: payload.id,
-        error: { message: "not implemented yet" },
-      });
+
+      const reject = (message: string) => {
+        connector?.rejectRequest({
+          id: payload.id,
+          error: { message },
+        });
+      }
+
+      switch(payload.method) {
+        // @ts-ignore
+        case "eth_sendTransaction":
+          const unsignedTx: ethers.utils.UnsignedTransaction = {
+            to: payload.params[0].to,
+            data: payload.params[0].data,
+            chainId: connector?.session.chainId,
+          };
+
+          if(payload.params[0].nonce) {
+            unsignedTx.nonce = parseInt(payload.params[0].nonce, 16);
+          }
+          if(payload.params[0].gas) {
+            unsignedTx.gasLimit = ethers.BigNumber.from(payload.params[0].gas);
+          }
+          if(payload.params[0].gasPrice) {
+            unsignedTx.gasPrice = ethers.BigNumber.from(payload.params[0].gasPrice);
+          }
+          if(payload.params[0].value) {
+            unsignedTx.value = ethers.BigNumber.from(payload.params[0].value);
+          }
+
+          const address = connector?.session.accounts[0];
+          // @ts-ignore
+          const path: string = find(addresses, { address })?.path;
+
+          if (!unsignedTx.nonce) {
+            const res = await axios.get(
+              `https://api.etherscan.io/api?module=proxy&action=eth_getTransactionCount&address=${address}&tag=latest&apikey=GPGACJA64X1GQUSG4KIUTXUFUMQXISPISZ`
+            );
+            unsignedTx.nonce = parseInt(res.data.result, 16);
+          }
+          if (!unsignedTx.gasPrice) {
+            const res = await axios.get(
+              `https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=GPGACJA64X1GQUSG4KIUTXUFUMQXISPISZ`
+            );
+            const gwei = ethers.BigNumber.from(10).pow(9);
+            unsignedTx.gasPrice = ethers.BigNumber.from(res.data.result.FastGasPrice).mul(gwei);
+          }
+
+          const unsignedTxHex = ethers.utils.serializeTransaction(unsignedTx);
+
+          try {
+            await client.request("devices", "requireApp", [{
+              name: "Ethereum"
+            }]);
+          } catch(e) {
+            return reject("app not accessible");
+          }
+      
+          await client.request("devices", "requireDeviceActionStart", [{}]);
+          
+          let result;
+          try {
+            result = await eth.signTransaction(path, unsignedTxHex.slice(2));
+          } catch(e) {
+            await client.request("devices", "requireDeviceActionEnd", [{}]);
+            console.log(e);
+            // TODO : when ledger-web-hw-transport relay correctly the error, display correct
+            // message
+            return reject("build tx error : did you reject or is your device sleeping ?");
+          }
+      
+          await client.request("devices", "requireDeviceActionEnd", [{}]);
+
+          let v = result.v;
+          // @ts-ignore
+          if (unsignedTx.chainId > 0) {
+            // EIP155 support. check/recalc signature v value.
+            let rv = parseInt(v, 16);
+            // @ts-ignore
+            let cv = unsignedTx.chainId * 2 + 35;
+            if (rv !== cv && (rv & cv) !== rv) {
+              cv += 1; // add signature v bit.
+            }
+            v = cv.toString(16);
+          }
+
+          let signature = {
+            r: `0x${result.r}`,
+            s: `0x${result.s}`,
+            v: parseInt(v, 16)
+          }
+
+          const signedTxHex = ethers.utils.serializeTransaction(
+            unsignedTx,
+            signature
+          );
+
+          let res;
+          try {
+            res = await axios.get(
+              `https://api.etherscan.io/api?module=proxy&action=eth_sendRawTransaction&hex=${signedTxHex}&apikey=GPGACJA64X1GQUSG4KIUTXUFUMQXISPISZ`
+            );
+          } catch(e) {
+            return reject("broadcast error " + e.message)
+          }
+
+          if (res.data.error) {
+            return reject("broadcast error " + res.data.error.message)
+          }
+
+          connector?.approveRequest({
+            id: payload.id,
+            result: res.data.result
+          });
+          break;
+        // eslint-disable-next-line no-fallthrough
+        case "eth_signTypedData":
+        case "eth_sign":
+        case "personal_sign":
+        case "eth_signTransaction":
+        default:
+          reject("not implemented yet");
+      }
     });
 
     dispatchWC({
