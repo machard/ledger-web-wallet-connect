@@ -1,0 +1,59 @@
+{
+  "name": "ledger-web-wallet-connect",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@ledgerhq/hw-app-eth": "^6.0.2",
+    "@ledgerhq/hw-transport": "^6.0.2",
+    "@material-ui/core": "^4.11.4",
+    "@material-ui/icons": "^4.11.2",
+    "@metamask/post-message-stream": "^4.0.0",
+    "@testing-library/jest-dom": "^5.11.4",
+    "@testing-library/react": "^11.1.0",
+    "@testing-library/user-event": "^12.1.10",
+    "@types/jest": "^26.0.23",
+    "@types/node": "^15.12.4",
+    "@types/react": "^17.0.11",
+    "@types/react-dom": "^17.0.8",
+    "ledger-web-client": "1.0.0",
+    "ledger-web-hw-transport": "1.0.0",
+    "lodash": "^4.17.21",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-scripts": "4.0.3",
+    "typescript": "^4.3.4",
+    "walletconnect": "^1.4.1",
+    "web-vitals": "^1.0.1"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/bitcoinjs-lib": "^5.0.0",
+    "@types/bs58": "^4.0.1",
+    "@types/lodash": "^4.14.170",
+    "@types/ripemd160": "^2.0.0",
+    "@types/sha.js": "^2.4.0"
+  }
+}
